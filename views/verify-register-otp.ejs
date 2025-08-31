@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Verify OTP</title>
+</head>
+<body>
+  <h1>verify OTP</h1>
+  <form action="/verify-register-otp" method="POST">
+  <input type="hidden" name="phone" value="<%= phone %>" />
+  <input type="text" name="otp" placeholder="Enter OTP" required />
+  <button type="submit">Verify OTP</button>
+</form>
+
+</body>
+</html>

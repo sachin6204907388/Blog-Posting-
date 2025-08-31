@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>All Blogs</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: #f4f6f9;
+      padding: 30px;
+      margin: 0;
+    }
+
+    h1 {
+      color: #222;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .blogs-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    .blog {
+      border: none;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .blog:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    }
+
+    .blog h2 {
+      margin: 0 0 10px;
+      color: #007BFF;
+      font-size: 20px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    .blog small {
+      color: #555;
+      font-size: 14px;
+    }
+
+    .blog-content {
+      margin-top: 15px;
+      font-size: 15px;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    /* Comment Form */
+    .comment-form {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+    }
+    .comment-form input {
+      flex: 1;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    .comment-form button {
+      padding: 8px 14px;
+      background: #17a2b8;
+      border: none;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    /* Actions */
+    .actions {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+    }
+    .actions button {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: 0.2s ease;
+    }
+    .view-btn { background: #28a745; color: white; }
+    .edit-btn { background: #ffc107; color: black; }
+    .delete-btn { background: #dc3545; color: white; }
+    .actions button:hover { opacity: 0.85; }
+  </style>
+</head>
+<body>
+  <h1>📖 All Blogs</h1>
+
+  <div class="blogs-container">
+    <% if (blogs.length === 0) { %>
+      <p>No blogs posted yet.</p>
+    <% } else { %>
+      <% blogs.forEach((b, index) => { %>
+        <div class="blog" data-id="<%= b.id %>">
+          <h2><%= index + 1 %>. <%= b.title %></h2>
+          <small>✍️ <%= b.author %></small>
+
+          <div class="blog-content"><%= b.content %></div>
+
+          <!-- Add Comment Form -->
+          <form class="comment-form" data-blogid="<%= b.id %>">
+            <input type="text" name="comment" placeholder="Write a comment..." required>
+            <button type="submit">Post</button>
+          </form>
+
+          <!-- Action Buttons -->
+          <div class="actions">
+            <button class="view-btn" onclick="location.href='/comments/<%= b.id %>'">👀 View Comments</button>
+            <button class="edit-btn" onclick="editBlog('<%= b.id %>')">✏️ Edit</button>
+            <button class="delete-btn" onclick="deleteBlog('<%= b.id %>')">🗑 Delete</button>
+          </div>
+        </div>
+      <% }) %>
+    <% } %>
+  </div>
+
+  <script>
+    // Handle Comment Submission (AJAX)
+    document.querySelectorAll(".comment-form").forEach(form => {
+      form.addEventListener("submit", async e => {
+        e.preventDefault();
+
+        const blogId = form.dataset.blogid;
+        const input = form.querySelector("input[name='comment']");
+        const commentText = input.value.trim();
+        if (!commentText) return;
+
+        try {
+          const res = await fetch(`/comment/${blogId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ comment: commentText })
+          });
+
+          if (res.ok) {
+            alert("✅ Comment posted!");
+            input.value = "";
+          } else {
+            const data = await res.text();
+            alert("❌ Error saving comment: " + data);
+          }
+        } catch (err) {
+          console.error(err);
+          alert("⚠ Error connecting to server.");
+        }
+      });
+    });
+
+    // Edit Blog with password check
+    async function editBlog(blogId) {
+      const password = prompt("Enter password to edit:");
+      if (!password) return;
+
+      try {
+        const res = await fetch(`/check-password/${blogId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          // Redirect to writeblog page
+          window.location.href = `/writeblog/${blogId}`;
+        } else {
+          alert("❌ Wrong password.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("⚠ Error connecting to server.");
+      }
+    }
+
+    // Delete Blog
+    function deleteBlog(blogId) {
+      const password = prompt("Enter password to delete:");
+      if (password) {
+        fetch(`/delete-blog/${blogId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ password })
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              alert("Blog deleted successfully!");
+              location.reload();
+            } else {
+              alert("Wrong password or error deleting blog.");
+            }
+          });
+      }
+    }
+  </script>
+</body>
+</html>

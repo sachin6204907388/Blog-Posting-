@@ -1,0 +1,20 @@
+{
+  "name": "vlogs",
+  "version": "1.0.0",
+  "description": "this is my first project",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "sachin kumar yadav",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^2.2.0",
+    "dotenv": "^17.2.1",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "i": "^0.3.7",
+    "mysql2": "^3.14.3",
+    "twilio": "^5.8.0"
+  }
+}

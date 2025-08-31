@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>All Blog Comments</title>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: #f4f6f9;
+      padding: 30px;
+      margin: 0;
+    }
+    h1 {
+      color: #222;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .blog {
+      background: #fff;
+      padding: 20px;
+      margin-bottom: 25px;
+      border-radius: 10px;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+    }
+    .blog h2 {
+      margin: 0 0 8px;
+      font-size: 20px;
+      color: #007bff;
+    }
+    .blog small {
+      color: #666;
+      font-size: 14px;
+    }
+    .blog-content {
+      margin: 12px 0;
+      font-size: 15px;
+      color: #333;
+    }
+    .comments {
+      margin-top: 15px;
+      padding: 12px;
+      border-top: 1px solid #ddd;
+      background: #f9f9f9;
+      border-radius: 6px;
+    }
+    .comments h3 {
+      margin-top: 0;
+      font-size: 16px;
+      color: #444;
+    }
+    .comments ul {
+      list-style: disc;
+      padding-left: 20px;
+    }
+    .comments li {
+      margin-bottom: 6px;
+      font-size: 14px;
+      color: #444;
+    }
+    .no-comments {
+      font-size: 14px;
+      color: #999;
+      font-style: italic;
+    }
+    .back-btn {
+      display: block;
+      width: max-content;
+      margin: 20px auto;
+      padding: 10px 20px;
+      background: #007bff;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      transition: 0.2s ease;
+    }
+    .back-btn:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1>💬 Blog Comments Section</h1>
+
+  <% if (blogs.length === 0) { %>
+    <p>No blogs available yet.</p>
+  <% } else { %>
+    <% blogs.forEach(b => { %>
+      <div class="blog">
+        <h2><%= b.title %></h2>
+        <small>✍️ <%= b.author %></small>
+        <p class="blog-content"><%= b.content %></p>
+
+        <div class="comments">
+          <h3>Comments</h3>
+          <ul>
+            <% if (b.comments && b.comments.length > 0) { %>
+              <% b.comments.forEach(c => { %>
+                <li><%= c.comment %></li>
+              <% }) %>
+            <% } else { %>
+              <li class="no-comments">No comments yet.</li>
+            <% } %>
+          </ul>
+        </div>
+      </div>
+    <% }) %>
+  <% } %>
+
+  <a href="/allblogs" class="back-btn">⬅ Back to Blogs</a>
+</body>
+</html>
