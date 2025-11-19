@@ -26,7 +26,7 @@ app.use('/static', express.static(path.join(__dirname, 'public')));
 const connection = mysql.createConnection({
     host: 'localhost',
     user: 'root',
-    password: 'sachin9122', // Replace with your MySQL root password
+    password: '********', // Replace with your MySQL root password
     database: 'blogs'
 });
 
@@ -101,7 +101,7 @@ app.post("/verify-register-otp", (req, res) => {
 app.get('/login', (req, res) => res.render('login'));
 
 app.post('/login-in', (req, res) => {
-  const { email, password } = req.body;
+  const { email, password } = req.b  ody;
   const sql = 'SELECT * FROM users WHERE email = ? AND password = ?';
   connection.query(sql, [email, password], (err, results) => {
     if (err) return res.send('Error during login');
