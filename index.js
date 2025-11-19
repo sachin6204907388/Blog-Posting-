@@ -1,14 +1,20 @@
+require('dotenv').config({ debug: true }); // Load env first!
+
 const express = require('express');
 const mysql = require('mysql2');
 const path = require('path');
 const bodyParser = require('body-parser');
 const twilio = require("twilio");
-require("dotenv").config();
 
 const app = express();
-const port = 8080;
+const port = process.env.PORT || 8080;
 
-// Middleware
+// ===== Debugging: Check Twilio variables =====
+console.log("Twilio SID:", process.env.TWILIO_SID);
+console.log("Twilio Auth Token:", process.env.TWILIO_AUTH_TOKEN ? "Loaded ✅" : "Missing ❌");
+console.log("Twilio Phone:", process.env.TWILIO_PHONE);
+
+// ===== Middleware =====
 app.use(bodyParser.json());
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -16,11 +22,11 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use('/static', express.static(path.join(__dirname, 'public')));
 
-// MySQL connection
+// ===== MySQL connection =====
 const connection = mysql.createConnection({
     host: 'localhost',
     user: 'root',
-    password: 'sachin9122',   // replace with your MySQL root password
+    password: 'sachin9122', // Replace with your MySQL root password
     database: 'blogs'
 });
 
@@ -32,35 +38,56 @@ connection.connect((err) => {
     console.log('✅ Connected to MySQL');
 });
 
-// Temporary OTP storage (in memory)
+// ===== Temporary OTP storage =====
 let otpStore = {};
 
 // ===== Registration Routes =====
 app.get('/register', (req, res) => res.render('register'));
 
-app.post("/register", (req, res) => {
+app.post("/register", async (req, res) => {
   const { username, email, password, phone } = req.body;
-  if (!username || !email || !password || !phone) return res.status(400).send("All fields are required.");
+  if (!username || !email || !password || !phone) {
+    return res.status(400).send("All fields are required.");
+  }
 
-  const otp = Math.floor(1000 + Math.random() * 9000); // 4-digit OTP
-  otpStore[phone] = { otp, username, email, password, expires: Date.now() + 5 * 60 * 1000 };
+  // Generate 4-digit OTP
+  const otp = Math.floor(1000 + Math.random() * 9000);
+  otpStore[phone] = {
+    otp,
+    username,
+    email,
+    password,
+    expires: Date.now() + 5 * 60 * 1000 // 5 minutes
+  };
 
-  const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
-  client.messages.create({
-    body: `Your OTP for registration is ${otp}`,
-    from: process.env.TWILIO_PHONE,
-    to: phone
-  })
-  .then(() => res.render("verify-register-otp", { phone }))
-  .catch(err => res.send("Error sending OTP, please try again."));
+  try {
+    const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
+    const message = await client.messages.create({
+      body: `Your OTP for registration is ${otp}`,
+      from: process.env.TWILIO_PHONE,
+      to: phone
+    });
+
+    console.log("OTP sent successfully:", message.sid);
+    res.render("verify-register-otp", { phone });
+  } catch (error) {
+    console.error("Error sending OTP:", error.message);
+    res.status(500).send("Error sending OTP, please try again.");
+  }
 });
 
 app.post("/verify-register-otp", (req, res) => {
   const { phone, otp } = req.body;
   const record = otpStore[phone];
+
   if (!record) return res.status(400).send("No OTP request for this phone.");
-  if (record.expires < Date.now()) { delete otpStore[phone]; return res.status(400).send("OTP expired."); }
-  if (record.otp.toString() !== otp.toString()) return res.status(400).send("Invalid OTP.");
+  if (record.expires < Date.now()) {
+    delete otpStore[phone];
+    return res.status(400).send("OTP expired.");
+  }
+  if (record.otp.toString() !== otp.toString()) {
+    return res.status(400).send("Invalid OTP.");
+  }
 
   const sql = "INSERT INTO users (username, email, password, phone) VALUES (?, ?, ?, ?)";
   connection.query(sql, [record.username, record.email, record.password, phone], (err) => {
@@ -106,7 +133,6 @@ app.get("/allblogs", (req, res) => {
 });
 
 // ===== Comments Routes =====
-// Show single blog + its comments
 app.get("/comments/:id", (req, res) => {
   const blogId = req.params.id;
   const blogQuery = "SELECT * FROM content WHERE id = ?";
@@ -124,7 +150,6 @@ app.get("/comments/:id", (req, res) => {
   });
 });
 
-// Post a comment
 app.post("/comment/:id", (req, res) => {
   const blogId = req.params.id;
   const comment = req.body.comment;
@@ -136,26 +161,42 @@ app.post("/comment/:id", (req, res) => {
   });
 });
 
-
-// edit button
-app.post('/check-password/:id', async (req, res) => {
+// ===== Edit Blog Password Check =====
+app.post('/check-password/:id', (req, res) => {
   const blogId = req.params.id;
   const { password } = req.body;
 
-  // Replace with your actual logic to verify password
-  const blog = await Blog.findById(blogId); // Mongoose example
-  if (!blog) return res.json({ success: false });
+  connection.query("SELECT * FROM content WHERE id = ?", [blogId], (err, results) => {
+    if (err || results.length === 0) return res.json({ success: false });
 
-  if (blog.password === password) {
-    return res.json({ success: true });
-  } else {
-    return res.json({ success: false });
-  }
+    const blog = results[0];
+    if (blog.password === password) {
+      return res.json({ success: true });
+    } else {
+      return res.json({ success: false });
+    }
+  });
 });
 
-// Start server
-app.listen(port, () => console.log(`🚀 Server running at http://localhost:${port}`));
+// ===== Delete Blog =====
+app.post("/delete-blog/:id", (req, res) => {
+  const blogId = req.params.id;
+  const { password } = req.body;
 
-console.log("Twilio SID:", process.env.TWILIO_SID);
-console.log("Twilio Auth Token:", process.env.TWILIO_AUTH_TOKEN ? "Loaded ✅" : "Missing ❌");
-console.log("Twilio Phone:", process.env.TWILIO_PHONE);
+  connection.query("SELECT * FROM content WHERE id = ?", [blogId], (err, results) => {
+    if (err || results.length === 0) return res.json({ success: false });
+
+    const blog = results[0];
+    if (blog.password !== password) {
+      return res.json({ success: false });
+    }
+
+    connection.query("DELETE FROM content WHERE id = ?", [blogId], (err2) => {
+      if (err2) return res.json({ success: false });
+      res.json({ success: true });
+    });
+  });
+});
+
+// ===== Start Server =====
+app.listen(port, () => console.log(`🚀 Server running at http://localhost:${port}`));
